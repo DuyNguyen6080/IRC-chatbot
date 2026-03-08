@@ -70,39 +70,4 @@ duy-bot: <command>
 | `users` | Lists all users the bot has seen in the channel |
 | `hi` or `hello` or `hey` | Starts a greeting conversation with the bot |
 
-### Examples
 
-```
-duy-bot: hello
-duy-bot: who are you?
-duy-bot: users
-duy-bot: forget
-duy-bot: die
-```
-
-
-```
-
-### You greet the bot first (bot is responder)
-
-```
-you:      duy-bot: hello
-duy-bot:  yourname: hello back at you!
-duy-bot:  yourname: how are you?
-you:      I'm doing well!
-duy-bot:  yourname: I'm doing great!
-duy-bot:  yourname: how about yourself?
-you:      Pretty good thanks
-```
-
-### If you don't reply (timeout)
-
-The bot waits 15–30 seconds at each step. If you don't respond it will try again, then eventually give up:
-
-```
-duy-bot:  yourname: hello!
-# 30 seconds pass...
-duy-bot:  yourname: Excuse me, hello?
-# 30 seconds pass...
-duy-bot:  yourname: Whatever.
-```
