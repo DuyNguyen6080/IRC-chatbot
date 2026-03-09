@@ -50,20 +50,21 @@ class GreetState:
     DONE               = "DONE"
 
 # Example phrases per speech-act
-OUTREACH_PHRASES   = ["hello!", "hi there!", "hey!", "greetings!"]
-SEC_OUTREACH       = [ "Excuse me, hello?", "Helloooo?", "Anyone there?"]
-OUTREACH_REPLY     = ["hello back at you!", "hi!", "hey there!", "greetings!"]
-INQUIRY_PHRASES    = ["how are you?", "how's it going?", "what's up?", "how are you doing?"]
-INQUIRY_REPLY_2    = ["I'm doing great!", "I'm fine, thanks!", "Pretty good!", "Doing well!"]
-INQUIRY_BOT_REPLY  = ["how about yourself?", "and you?", "what about you?", "how are you doing?"]
-INQUIRY_REPLY_1    = ["I'm great, thanks for asking!", "Doing well!", "I'm good, thanks!", "Not bad!"]
-GIVEUP_PHRASES     = ["Ok, forget you.", "Whatever.", "screw you!", "Fine, be that way.", "whatever, fine. Don't answer."]
+BOT_OUTREACH_REPLY_1   = ["hello!", "hi there!", "hey!", "greetings!"]
+BOT_NO_REPLY       = [ "Excuse me, hello?", "Helloooo?", "Anyone there?"]
+BOT_OUTREACH_REPLY_2    = ["hello back at you!", "hi!", "hey there!", "greetings!"]
+
+BOT_INQUIRY_PHRASES    = ["how are you?", "how's it going?", "what's up?", "how are you doing?"]
+BOT_INQUIRY_REPLY_2    = ["I'm doing great!", "I'm fine, thanks!", "Pretty good!", "Doing well!"]
+BOT_INQUIRY_BOT_REPLY  = ["how about yourself?", "and you?", "what about you?", "how are you doing?"]
+BOT_INQUIRY_REPLY_1    = ["I'm great, thanks for asking!", "Doing well!", "I'm good, thanks!", "Not bad!"]
+BOT_GIVEUP_PHRASES     = ["Ok, forget you.", "Whatever.", "screw you!", "Fine, be that way.", "whatever, fine. Don't answer."]
 
 # Regex patterns for detecting incoming speech-acts
-RE_OUTREACH  = re.compile(r"\b(hi|hello|hey|greetings|howdy|sup|yo)\b", re.I)
-RE_INQUIRY   = re.compile(r"\b(how are you|how('?s| is) it going|what'?s (up|happening)|how are you doing|how do you do)\b", re.I)
-RE_INQ_REPLY = re.compile(r"(\b(i'?m (good|fine|great|ok|okay|doing well|alright)|not bad|pretty good|doing well)\b) | (\b(good|fine|ok|great|well|alright)\b)", re.I)
-RE_GIVEUP    = re.compile(r"\b(forget you|whatever|screw you|fine|don'?t answer|forget it)\b", re.I)
+USER_OUTREACH  = re.compile(r"\b(hi|hello|hey|greetings|howdy|sup|yo)\b", re.I)
+USER_INQUIRY   = re.compile(r"\b(how are you|how('?s| is) it going|what'?s (up|happening)|how are you doing|how do you do)\b", re.I)
+USER_INQ_REPLY = re.compile(r"(\b(i'?m (good|fine|great|ok|okay|doing well|alright)|not bad|pretty good|doing well)\b) | (\b(good|fine|ok|great|well|alright)\b)", re.I)
+USER_GIVEUP    = re.compile(r"\b(forget you|whatever|screw you|fine|don'?t answer|forget it)\b", re.I)
 
 # ─────────────────────────────────────────────
 #  Bot state (reset with "forget")
@@ -142,7 +143,7 @@ def timeout_no_reply(bot: BotState):
     """Initiator sent initial outreach, no reply → secondary outreach."""
     
     
-    msg = random.choice(SEC_OUTREACH)
+    msg = random.choice(BOT_NO_REPLY)
     send_channel(f"{bot.channel_user}: {msg}")
     #bot.greet_state = GreetState.SEC_OUTREACH_SENT
     set_timer_for(bot, INQUERY_WAIT_TIME, lambda b=bot: timeout_give_up(b))
@@ -152,7 +153,7 @@ def timeout_give_up(bot: BotState):
     if bot.greet_state in (GreetState.SEC_OUTREACH_SENT,
                            GreetState.INQUIRY_SENT,
                            GreetState.AWAITING_INQUIRY):
-        msg = random.choice(GIVEUP_PHRASES)
+        msg = random.choice(BOT_GIVEUP_PHRASES)
         send_channel(f"{bot.channel_user}: {msg}")
         bot.greet_state = GreetState.DONE
         cancel_timer_for(bot)
@@ -205,55 +206,59 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
     
     # ── BOT is INITIATOR ─────────────────────
     if bot.greet_role == "initiator":
-        
+#INITIAL OUTREACH    
         if s == GreetState.INIT_OUTREACH_SENT and sender == p:
             
-            if RE_OUTREACH.search(text) :
+            if USER_OUTREACH.search(text) : #hello hi,....
                 cancel_timer_for(bot)
-                inq = random.choice(OUTREACH_PHRASES)
+                inq = random.choice(BOT_OUTREACH_REPLY_1)
                 
                 reply(inq)
-                bot.greet_state = GreetState.SEC_OUTREACH_SENT
-                set_timer_for(bot, INQUERY_WAIT_TIME, lambda b=bot: timeout_no_reply(b))
+                bot.greet_state = GreetState.OUTREACH_REPLIED
+                set_timer_for(bot, INQUERY_WAIT_TIME, lambda b=bot: timeout_no_reply(b)) # second outreach (1)
             
-            elif RE_GIVEUP.search(text):
-                ask_inq = " how can I help you today"
-                reply(ask_inq)
-                bot.greet_role = "responder"
-                bot.greet_state = GreetState.AWAITING_INQUIRY
-
-        elif s == GreetState.SEC_OUTREACH_SENT and sender == p:
-            if RE_OUTREACH.search(text): # e.g: hi, hello
+#OUTREACH REPLY (2)
+        elif s == GreetState.OUTREACH_REPLIED and sender == p:
+            print(f"OUTREACH REPLY (2) {text}")
+            if USER_INQ_REPLY.search(text): # good, great, ..
                 cancel_timer_for(bot)
-                inq = random.choice(INQUIRY_PHRASES) # how are you 
+                set_timer_for(bot, INQUERY_WAIT_TIME, timeout_give_up)
+                
+            if USER_OUTREACH.search(text): # e.g: hi, hello
+                cancel_timer_for(bot)
+                inq = random.choice(BOT_INQUIRY_PHRASES) # how are you 
                 reply(inq)
-                bot.greet_state = GreetState.INQUIRY_SENT
+                bot.greet_state = GreetState.OUTREACH_REPLIED
                 set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_no_reply(bot))
-            elif RE_GIVEUP.search(text):
-                ask_inq = " how can I help you today"
-                reply(ask_inq)
-                bot.greet_role = "responder"
-                bot.greet_state = GreetState.AWAITING_INQUIRY
-           
-                
-
-        elif s == GreetState.INQUIRY_SENT and sender == p:
-            cancel_timer_for(bot)
-            if RE_INQ_REPLY.search(text): # e.g: good, fine, great...
-                rep = random.choice(INQUIRY_REPLY_1)
-                reply(rep)
             
+            if USER_INQUIRY.search(text) : # e.g: how are you, ...
+                cancel_timer_for(bot)
+                rep = random.choice(BOT_INQUIRY_REPLY_1) # # e.g: "I'm great, thanks for asking!", "Doing well!", "I'm good, thanks!", "Not bad!"
+                inq = random.choice(BOT_INQUIRY_BOT_REPLY) #eg: and you ?
+                reply(rep + " " + inq)
+                bot.greet_state = GreetState.DONE
+                set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_no_reply(bot))
+            
+        elif s == GreetState.DONE and sender == p:
+            print(f"GreetState {s} canceling time")
+            cancel_timer_for(bot)
+        
             ask_inq = "OK how can I help you today"
             reply(ask_inq)
             bot.greet_role = "responder"
             bot.greet_state = GreetState.AWAITING_INQUIRY
-
         
-            
+        elif USER_GIVEUP.search(text):
+                cancel_timer_for(bot)
+                ask_inq = " how can I help you today"
+                reply(ask_inq)
+                bot.greet_role = "responder"
+                bot.greet_state = GreetState.AWAITING_INQUIRY
 
     # ── BOT is RESPONDER ─────────────────────
      
     elif bot.greet_role == "responder":
+       cancel_timer_for(bot)
        # NEED IMPLEMENTING HERE AFTER BOT FINISHED GREETING
        inquery = "This is a dummy response NEED IMPLEMENTATION in handle_greeting_msg -- bot.greet_role = \"responser\" "
        reply(inquery)
