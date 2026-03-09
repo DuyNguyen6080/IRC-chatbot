@@ -150,13 +150,11 @@ def timeout_no_reply(bot: BotState):
 
 def timeout_give_up(bot: BotState):
     """Still no reply → give up frustrated."""
-    if bot.greet_state in (GreetState.SEC_OUTREACH_SENT,
-                           GreetState.INQUIRY_SENT,
-                           GreetState.AWAITING_INQUIRY):
-        msg = random.choice(BOT_GIVEUP_PHRASES)
-        send_channel(f"{bot.channel_user}: {msg}")
-        bot.greet_state = GreetState.DONE
-        cancel_timer_for(bot)
+   
+    msg = random.choice(BOT_GIVEUP_PHRASES)
+    send_channel(f"{bot.channel_user}: {msg}")
+    bot.greet_state = GreetState.DONE
+    cancel_timer_for(bot)
 
 # ─────────────────────────────────────────────
 #  Command handler
@@ -229,7 +227,7 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
                 inq = random.choice(BOT_INQUIRY_PHRASES) # how are you 
                 reply(inq)
                 bot.greet_state = GreetState.OUTREACH_REPLIED
-                set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_no_reply(bot))
+                set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_give_up(bot))
             
             if USER_INQUIRY.search(text) : # e.g: how are you, ...
                 cancel_timer_for(bot)
@@ -237,7 +235,7 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
                 inq = random.choice(BOT_INQUIRY_BOT_REPLY) #eg: and you ?
                 reply(rep + " " + inq)
                 bot.greet_state = GreetState.DONE
-                set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_no_reply(bot))
+                set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_give_up(bot))
             
         elif s == GreetState.DONE and sender == p:
             print(f"GreetState {s} canceling time")
