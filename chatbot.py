@@ -22,14 +22,39 @@ from enum import Enum
 parser = argparse.ArgumentParser()
 parser.add_argument("--owner_name", "-n", type=str)
 parser.add_argument("--course", "-c", type=str)
-parser.add_argument("--server", type=str, default="irc.libera.chat")
-parser.add_argument("--port", type=int, default=6667)
-parser.add_argument("--channel", type=str, default="#CSC482")
-parser.add_argument("--bot_name", type=str, default="cpe482-bot")
 parser.add_argument(
-    "--response_delay", type=float, default=1.5, help="seconds before each reply"
+    "--server",
+    type=str,
+    default="irc.libera.chat",
+    help="Server to join. Default is 'irc.libera.chat'.",
 )
-parser.add_argument("--inquiry_wait_time", type=float, default=10.0)
+parser.add_argument(
+    "--port", type=int, default=6667, help="Port of the server. Default is 6667."
+)
+parser.add_argument(
+    "--channel",
+    type=str,
+    default="#CSC482",
+    help="Channel on the server to join. Default is '#CSC482'",
+)
+parser.add_argument(
+    "--bot_name",
+    type=str,
+    default="csc482-bot",
+    help="Name of bot on the server. Default is 'csc482-bot'.",
+)
+parser.add_argument(
+    "--response_delay",
+    type=float,
+    default=1.5,
+    help="Seconds before each reply. Default is 1.5.",
+)
+parser.add_argument(
+    "--inquiry_wait_time",
+    type=float,
+    default=10.0,
+    help="Inquiry wait time. Default is 10.",
+)
 args = parser.parse_args()
 
 OWNER_NAME = args.owner_name
