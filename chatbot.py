@@ -31,6 +31,10 @@ RESPONSE_DELAY = 1.5   # seconds before each reply
 INQUERY_WAIT_TIME = 10
 
 # ─────────────────────────────────────────────
+#  IRC socket helpers
+# ─────────────────────────────────────────────
+irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# ─────────────────────────────────────────────
 #  Greeting FSM states
 # ─────────────────────────────────────────────
 class GreetState:
@@ -47,7 +51,7 @@ class GreetState:
 
 # Example phrases per speech-act
 OUTREACH_PHRASES   = ["hello!", "hi there!", "hey!", "greetings!"]
-SEC_OUTREACH       = ["I said HI!", "Excuse me, hello?", "Helloooo?", "Anyone there?"]
+SEC_OUTREACH       = [ "Excuse me, hello?", "Helloooo?", "Anyone there?"]
 OUTREACH_REPLY     = ["hello back at you!", "hi!", "hey there!", "greetings!"]
 INQUIRY_PHRASES    = ["how are you?", "how's it going?", "what's up?", "how are you doing?"]
 INQUIRY_REPLY_2    = ["I'm doing great!", "I'm fine, thanks!", "Pretty good!", "Doing well!"]
@@ -90,10 +94,7 @@ def get_bot_state(nick: str) -> BotState:
     bots.append(b)
     return b
 
-# ─────────────────────────────────────────────
-#  IRC socket helpers
-# ─────────────────────────────────────────────
-irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 
 def send_raw(msg: str):
     irc.send((msg + "\r\n").encode("utf-8"))
@@ -143,7 +144,7 @@ def timeout_no_reply(bot: BotState):
     
     msg = random.choice(SEC_OUTREACH)
     send_channel(f"{bot.channel_user}: {msg}")
-    bot.greet_state = GreetState.SEC_OUTREACH_SENT
+    #bot.greet_state = GreetState.SEC_OUTREACH_SENT
     set_timer_for(bot, INQUERY_WAIT_TIME, lambda b=bot: timeout_give_up(b))
 
 def timeout_give_up(bot: BotState):
@@ -209,7 +210,7 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
             
             if RE_OUTREACH.search(text) :
                 cancel_timer_for(bot)
-                inq = random.choice(OUTREACH_REPLY)
+                inq = random.choice(OUTREACH_PHRASES)
                 
                 reply(inq)
                 bot.greet_state = GreetState.SEC_OUTREACH_SENT
@@ -224,31 +225,24 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
         elif s == GreetState.SEC_OUTREACH_SENT and sender == p:
             if RE_OUTREACH.search(text): # e.g: hi, hello
                 cancel_timer_for(bot)
-                inq = random.choice(INQUIRY_PHRASES)
+                inq = random.choice(INQUIRY_PHRASES) # how are you 
                 reply(inq)
                 bot.greet_state = GreetState.INQUIRY_SENT
                 set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_no_reply(bot))
-            if RE_INQUIRY.search(text): # e.g: how are you
-                cancel_timer_for(bot)
-                inq = random.choice(INQUIRY_REPLY_1)
-                reply(inq)
-                ask_inq = "OK how can I help you today"
-                reply(ask_inq)
-                bot.greet_role = "responder"
-                bot.greet_state = GreetState.AWAITING_INQUIRY
-                
             elif RE_GIVEUP.search(text):
                 ask_inq = " how can I help you today"
                 reply(ask_inq)
                 bot.greet_role = "responder"
                 bot.greet_state = GreetState.AWAITING_INQUIRY
+           
+                
 
         elif s == GreetState.INQUIRY_SENT and sender == p:
             cancel_timer_for(bot)
-            if RE_INQUIRY.search(text): # e.g: how are you, how you do
+            if RE_INQ_REPLY.search(text): # e.g: good, fine, great...
                 rep = random.choice(INQUIRY_REPLY_1)
                 reply(rep)
-        
+            
             ask_inq = "OK how can I help you today"
             reply(ask_inq)
             bot.greet_role = "responder"
@@ -285,7 +279,9 @@ def parse_privmsg(line: str):
 # ─────────────────────────────────────────────
 def handle_line(line: str):
     print(f"[RAW] {line}")
+    
 
+    
     #remove user bot if exit the server
     m = re.match(r":(\S+?)!\S+ (QUIT|PART) \S+", line)
     if m:
@@ -297,6 +293,17 @@ def handle_line(line: str):
                 bots.remove(bot)
                 print(f"removing {bot.channel_user}")
         return
+    # JOIN – add user
+    
+    
+    join = re.match(r":(\S+?)!\S+ JOIN :?(\S+)", line)
+    if join:
+        nick, chan = join.group(1), join.group(2)
+        if nick == BOT_NAME: return
+        print(f"{nick} JOINING {chan}")          # ← now this prints
+        bot_user = get_bot_state(nick)
+        handle_greeting_msg(bot_user, nick, 'hello')
+        return                                   # ← return after handling
 
 
     # PRIVMSG
@@ -349,7 +356,7 @@ def connect():
     # Request names
     time.sleep(2)
     send_raw(f"NAMES {CHANNEL}")
-    # Greeting initiator is now driven by per-user BotState on incoming PRIVMSG.
+    
 
 def main():
     connect()
