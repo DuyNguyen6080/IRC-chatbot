@@ -24,10 +24,11 @@ BOT_NAME    = sys.argv[4] if len(sys.argv) > 4 else "cpe482-bot"
 SERVER      = sys.argv[1] if len(sys.argv) > 1 else "irc.libera.chat"
 PORT        = int(sys.argv[2]) if len(sys.argv) > 2 else 6667
 CHANNEL     = sys.argv[3] if len(sys.argv) > 3 else "#CSC482"
-OWNER_NAME  = "Duy's bot"          # ← change to your real name
+OWNER_NAME  = "Duy"          # ← change to your real name
 COURSE      = "CSC 482"        # ← change to your section
 
 RESPONSE_DELAY = 1.5   # seconds before each reply
+INQUERY_WAIT_TIME = 10
 
 # ─────────────────────────────────────────────
 #  Greeting FSM states
@@ -69,9 +70,7 @@ class BotState:
 
     def reset(self):
         self.greet_state    = GreetState.INIT_OUTREACH_SENT
-       
-        self.greet_role     = None   # "initiator" | "responder"
-        self.last_activity  = None
+        self.greet_role     = "initiator"   # "initiator" | "responder"
         self.timer          = None   # threading.Timer
         # The IRC nick this BotState is tracking (one state per user)
         self.channel_user   = ""
@@ -129,6 +128,7 @@ def set_timer(seconds, callback):
     pass
 
 def set_timer_for(bot: BotState, seconds, callback):
+    print(f"Setting timer for {bot}")
     cancel_timer_for(bot)
     bot.timer = threading.Timer(seconds, callback)
     bot.timer.daemon = True
@@ -140,11 +140,11 @@ def set_timer_for(bot: BotState, seconds, callback):
 def timeout_no_reply(bot: BotState):
     """Initiator sent initial outreach, no reply → secondary outreach."""
     
-    if bot.greet_state == GreetState.INQUIRY_SENT:
-        msg = random.choice(SEC_OUTREACH)
-        send_channel(f"{bot.channel_user}: {msg}")
-        bot.greet_state = GreetState.SEC_OUTREACH_SENT
-        set_timer_for(bot, 30, lambda: timeout_give_up(bot))
+    
+    msg = random.choice(SEC_OUTREACH)
+    send_channel(f"{bot.channel_user}: {msg}")
+    bot.greet_state = GreetState.SEC_OUTREACH_SENT
+    set_timer_for(bot, INQUERY_WAIT_TIME, lambda b=bot: timeout_give_up(b))
 
 def timeout_give_up(bot: BotState):
     """Still no reply → give up frustrated."""
@@ -155,15 +155,6 @@ def timeout_give_up(bot: BotState):
         send_channel(f"{bot.channel_user}: {msg}")
         bot.greet_state = GreetState.DONE
         cancel_timer_for(bot)
-    
-
-def timeout_inquiry_give_up(bot: BotState):
-    """Bot sent inquiry as responder, no reply → give up."""
-    if bot.greet_state == GreetState.INQUIRY_REPLIED:
-        msg = random.choice(GIVEUP_PHRASES)
-        send_channel(f"{bot.greet_partner}: {msg}")
-        bot.greet_state = GreetState.DONE
-
 
 # ─────────────────────────────────────────────
 #  Command handler
@@ -192,40 +183,13 @@ def handle_command(bot: BotState, sender: str, cmd_text: str):
             f"{sender}: My name is {BOT_NAME}. I was created by {OWNER_NAME}, {COURSE}."
         )
         send_channel(
-            f"{sender}: I can answer weather questions! Ask me: "
-            f"\"what is the weather in [city]?\" e.g. \"what is the weather in Paris?\""
+            f"{sender}: I can answer question: ... *dummy need implementation"
         )
 
     # users
     elif cmd.lower() == "users":
         users = ", ".join(sorted({b.channel_user for b in bots if b.channel_user})) or "(unknown)"
         send_channel(f"{sender}: {users}")
-
-    # hi / hello
-    elif cmd.lower() in ("hi", "hello", "hey"):
-        if bot.greet_state == GreetState.IDLE:
-            # Bot becomes responder
-            bot.greet_partner = sender
-            bot.greet_role    = "responder"
-            bot.greet_state   = GreetState.OUTREACH_REPLIED
-            reply = random.choice(OUTREACH_REPLY)
-            send_channel(f"{sender}: {reply}")
-            # Now bot must ask inquiry
-            time.sleep(RESPONSE_DELAY)
-            inq = random.choice(INQUIRY_PHRASES)
-            send_channel(f"{sender}: {inq}")
-            bot.greet_state = GreetState.AWAITING_INQUIRY
-            set_timer_for(bot, random.randint(15, 30), lambda: timeout_inquiry_give_up(bot))
-
-    # Phase III: weather QA (direct command)
-    else:
-        m = RE_WEATHER.search(cmd)
-        if m:
-            city = m.group(1).strip()
-            answer = get_weather(city)
-            send_channel(f"{sender}: {answer}")
-        else:
-            send_channel(f"{sender}: I don't understand that command. Try 'usage' for help.")
 
 # ─────────────────────────────────────────────
 #  Greeting state machine – incoming message
@@ -249,7 +213,7 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
                 
                 reply(inq)
                 bot.greet_state = GreetState.SEC_OUTREACH_SENT
-                set_timer_for(bot, 30, lambda b=bot: timeout_no_reply(b))
+                set_timer_for(bot, INQUERY_WAIT_TIME, lambda b=bot: timeout_no_reply(b))
             
             elif RE_GIVEUP.search(text):
                 ask_inq = " how can I help you today"
@@ -263,7 +227,7 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
                 inq = random.choice(INQUIRY_PHRASES)
                 reply(inq)
                 bot.greet_state = GreetState.INQUIRY_SENT
-                set_timer_for(bot, 30, lambda: timeout_no_reply(bot))
+                set_timer_for(bot, INQUERY_WAIT_TIME, lambda: timeout_no_reply(bot))
             if RE_INQUIRY.search(text): # e.g: how are you
                 cancel_timer_for(bot)
                 inq = random.choice(INQUIRY_REPLY_1)
@@ -294,28 +258,17 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
             
 
     # ── BOT is RESPONDER ─────────────────────
+     
     elif bot.greet_role == "responder":
-
-        if s == GreetState.AWAITING_INQUIRY and sender == p:
-            cancel_timer_for(bot)
-            if RE_INQUIRY.search(text) or re.search(r"how are|what'?s up|how'?s it", text, re.I):
-                rep = random.choice(INQUIRY_REPLY_2)
-                reply(rep)
-                bot.greet_state = GreetState.INQUIRY_REPLIED
-                time.sleep(RESPONSE_DELAY)
-                back = random.choice(INQUIRY_BOT_REPLY)
-                reply(back)
-                set_timer_for(bot, random.randint(15, 30), lambda: timeout_inquiry_give_up(bot))
-            elif RE_GIVEUP.search(text):
-                bot.greet_state = GreetState.DONE
-
-        elif s == GreetState.INQUIRY_REPLIED and sender == p:
-            cancel_timer_for(bot)
-            if RE_INQ_REPLY.search(text) or re.search(r"\b(good|fine|ok|great|well|alright)\b", text, re.I):
-                bot.greet_state = GreetState.DONE
-            elif RE_GIVEUP.search(text):
-                bot.greet_state = GreetState.DONE
-
+       # NEED IMPLEMENTING HERE AFTER BOT FINISHED GREETING
+       inquery = "This is a dummy response NEED IMPLEMENTATION in handle_greeting_msg -- bot.greet_role = \"responser\" "
+       reply(inquery)
+        #
+        #
+        #
+        #
+        #
+        #
 # ─────────────────────────────────────────────
 #  Parse raw IRC line
 # ─────────────────────────────────────────────
@@ -326,40 +279,6 @@ def parse_privmsg(line: str):
         return m.group(1), m.group(2), m.group(3)
     return None
 
-def parse_353(line: str):
-    """Parse NAMES list (353 reply)."""
-    m = re.search(r"353 \S+ [=@*] \S+ :(.*)", line)
-    if m:
-        nicks = m.group(1).split()
-        nicks = [n.lstrip("@+") for n in nicks]
-        return nicks
-    return None
-
-# ─────────────────────────────────────────────
-#  Initiator routine (run in background thread)
-# ─────────────────────────────────────────────
-def initiate_greeting(bot: BotState, nickname: str, chanel: str):
-    """After joining, wait for NAMES then greet a random non-bot user in the channel."""
-    # Wait up to 30s for channel_users to populate
-    """wait_start = time.time()
-    while len(state.channel_users) == 0 and time.time() - wait_start < 30:
-        time.sleep(1)
-"""
-    # Then wait the required 10-20 s before initiating
-    """time.sleep(random.randint(10, 20))"""
-
-    if bot.greet_state != GreetState.IDLE:
-        return
-
-    bot.greet_partner = nickname
-    bot.greet_role    = "initiator"
-    bot.greet_state   = GreetState.INIT_OUTREACH_SENT
-
-    # Send greeting to the CHANNEL (publicly), addressed to the target
-    msg = nickname + ": " +random.choice(OUTREACH_PHRASES)
-    
-    send_channel(msg);
-    set_timer_for(bot, random.randint(15, 30), lambda: timeout_no_reply(bot))
 
 # ─────────────────────────────────────────────
 #  Main message handler
@@ -415,7 +334,7 @@ def handle_line(line: str):
                 handle_greeting_msg(bot, sender, cmd_text)
         else:
             # Not directly addressed → check if it's from our greeting partner
-            if bot.greet_partner and sender == bot.greet_partner:
+            if bot.channel_user and sender == bot.channel_user:
                 handle_greeting_msg(bot, sender, text)
 
 # ─────────────────────────────────────────────
