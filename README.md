@@ -6,21 +6,22 @@ A Python IRC chatbot that connects to an IRC channel, holds multi-step greeting 
 
 ## Requirements
 
-- Python 3.7 or higher
-- No external packages needed — uses Python standard library only
+- Python 3.11 or higher
+- Packages specified in pyproject.toml
+- World Sea Map: https://marineregions.org/download_file.php?name=World_Seas_IHO_v3.zip
 
 ---
 
 ## Setup Before Running
 
-Open `chatbot1.py` and edit these two lines near the top to match your info:
+Open `chatbot.py` and edit these two lines near the top to match your info:
 
 ---
 
 ## How to Run
 
 ```bash
-python chatbot1.py --help
+python chatbot.py --help
 ```
 
 | Argument | Description | Example |
@@ -28,14 +29,14 @@ python chatbot1.py --help
 | `server` | IRC server address | `irc.libera.chat` |
 | `port` | IRC server port | `6667` |
 | `channel` | Channel to join (use quotes) | `"#CSC482"` |
-| `bot_name` | Your bot's name — **must end with `-bot`** | `duy-bot` |
+| `bot_name` | Your bot's name — **must end with `-bot`** | `csc482-bot` |
 
 ### Run with defaults (no arguments)
 
 If you run without arguments it uses these defaults:
 
 ```bash
-python chatbot1.py
+python chatbot.py
 # server:  irc.libera.chat
 # port:    6667
 # channel: #CSC482
@@ -47,7 +48,7 @@ python chatbot1.py
 All commands are typed in the IRC channel addressed to the bot like this:
 
 ```
-duy-bot: <command>
+name-bot: <command>
 ```
 
 | Command | What it does |
@@ -61,5 +62,3 @@ duy-bot: <command>
 ## Special usage
 
 You can ask the bot "Where is <latitude>, <longitude>", or "Where is the ISS?", see what happens!
-
-
