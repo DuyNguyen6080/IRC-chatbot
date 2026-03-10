@@ -62,7 +62,7 @@ COURSE = args.course
 SERVER = args.server
 PORT = args.port
 CHANNEL = args.channel
-BOT_NAME = args.bot_name
+BOT_NAME = args.bot_name if args.bot_name.endswith("-bot") else args.bot_name + "-bot"
 RESPONSE_DELAY = args.response_delay
 INQUIRY_WAIT_TIME = args.inquiry_wait_time
 
@@ -139,6 +139,16 @@ USER_GIVEUP = re.compile(
     r"\b(forget you|whatever|screw you|fine|don'?t answer|forget it)\b", re.I
 )
 
+# Valid special use commands
+COMMANDS = {
+    "die",
+    "forget",
+    "who are you?",
+    "who are you",
+    "usage",
+    "users",
+}
+
 
 # ─────────────────────────────────────────────
 #  Bot state (reset with "forget")
@@ -156,14 +166,13 @@ class BotState:
 
 
 # Multiple BotState objects (one per user we have interacted with)
-bots = []
+bots = {}
 
 
 def get_bot_state(nick: str) -> BotState:
     """Return the BotState for a nick; create if missing."""
-    for b in bots:
-        if b.channel_user == nick:
-            return b
+    if nick in bots:
+        return bots[nick]
     b = BotState()
     b.channel_user = nick
     b.greet_role = "initiator"
@@ -245,41 +254,42 @@ def timeout_give_up(bot: BotState):
 # ─────────────────────────────────────────────
 def handle_command(bot: BotState, sender: str, cmd_text: str):
     """Handle a command addressed to the bot."""
-    cmd = cmd_text.strip()
+    cmd = cmd_text.strip().lower()
 
-    # die
-    if cmd.lower() == "die":
-        send_channel(f"{sender}: I shall!")
-        time.sleep(1)
-        quit_irc(f"{BOT_NAME} signing off")
-        sys.exit(0)
+    match cmd:
+        # die
+        case "die":
+            send_channel(f"{sender}: I shall!")
+            time.sleep(1)
+            quit_irc(f"{BOT_NAME} signing off")
+            sys.exit(0)
 
-    # forget
-    elif cmd.lower() == "forget":
-        cancel_timer_for(bot)
-        bot.reset()
-        bot.channel_user = sender
-        send_channel(f"{sender}: forgetting everything")
+        # forget
+        case "forget":
+            cancel_timer_for(bot)
+            bot.reset()
+            bot.channel_user = sender
+            send_channel(f"{sender}: forgetting everything")
 
-    # who are you? / usage
-    elif cmd.lower() in ("who are you?", "who are you", "usage"):
-        send_channel(
-            f"{sender}: My name is {BOT_NAME}. I was created by {OWNER_NAME}, {COURSE}."
-        )
-        send_channel(f"{sender}: I can answer question: ... *dummy need implementation")
+        # who are you? / usage
+        case "who are you?" | "who are you" | "usage":
+            send_channel(
+                f"{sender}: My name is {BOT_NAME}. I was created by {OWNER_NAME}, {COURSE}."
+            )
+            send_channel(
+                f"{sender}: I can answer question: ... *dummy need implementation"
+            )
 
-    # users
-    elif cmd.lower() == "users":
-        users = (
-            ", ".join(sorted({b.channel_user for b in bots if b.channel_user}))
-            or "(unknown)"
-        )
-        send_channel(f"{sender}: {users}")
+        # users
+        case "users":
+            users = ", ".join(sorted(bots.keys())) or "(unknown)"
+            send_channel(f"{sender}: {users}")
 
 
 # ─────────────────────────────────────────────
 #  Greeting state machine – incoming message
 # ─────────────────────────────────────────────
+# NOTE: this actually handles all incoming messages directed at bot
 def handle_greeting_msg(bot: BotState, sender: str, text: str):
     """Process a message from sender that may advance the greeting FSM."""
     s = bot.greet_state
@@ -337,14 +347,16 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
 
         elif USER_GIVEUP.search(text):
             cancel_timer_for(bot)
+            # TODO: change message to align with responder behavior
             ask_inq = " how can I help you today"
             reply(ask_inq)
             bot.greet_role = "responder"
+            # After bot has hit done state, it becomes a responder
             bot.greet_state = GreetState.AWAITING_INQUIRY
 
     # ── BOT is RESPONDER ─────────────────────
-
     elif bot.greet_role == "responder":
+        # TODO: impl cusstom API call
         cancel_timer_for(bot)
         # NEED IMPLEMENTING HERE AFTER BOT FINISHED GREETING
         inquiry = 'This is a dummy response NEED IMPLEMENTATION in handle_greeting_msg -- bot.greet_role = "responser" '
@@ -360,18 +372,18 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
 # ─────────────────────────────────────────────
 #  Parse raw IRC line
 # ─────────────────────────────────────────────
-def parse_privmsg(line: str):
-    """Returns (sender_nick, target, message) or None."""
-    m = re.match(r":(\S+?)!\S+ PRIVMSG (\S+) :(.*)", line)
+def parse_privmsg(line: str) -> tuple[str, str, str, str] | None:
+    """Returns (sender, channel, target, message) or None."""
+    m = re.match(r":(\S+?)!\S+ PRIVMSG (\S+) :(.*):(.*)", line)
     if m:
-        return m.group(1), m.group(2), m.group(3)
+        return m.group(1), m.group(2), m.group(3), m.group(4)
     return None
 
 
 # ─────────────────────────────────────────────
 #  Main message handler
 # ─────────────────────────────────────────────
-def handle_line(line: str):
+def handle_line(line: str) -> None:
     print(f"[RAW] {line}")
 
     # remove user bot if exit the server
@@ -379,11 +391,11 @@ def handle_line(line: str):
     if m:
         nick = m.group(1)
 
-        for bot in bots:
-            if bot.channel_user == nick:
-                cancel_timer_for(bot)
-                bots.remove(bot)
-                print(f"removing {bot.channel_user}")
+        if nick in bots:
+            bot = bots[nick]
+            cancel_timer_for(bot)
+            del bots[nick]
+            print(f"removing {bot.channel_user}")
         return
     # JOIN – add user
 
@@ -400,45 +412,23 @@ def handle_line(line: str):
     # PRIVMSG
     parsed = parse_privmsg(line)
     if not parsed:
+        # Ignore messages that aren't properly addressed to someone
         return
-    sender, target, text = parsed
+    sender, _, target, message = parsed
 
-    # Ignore own messages
-    if sender.lower() == BOT_NAME.lower():
+    # Ignore own messages and messages not for us
+    if sender.lower() == BOT_NAME.lower() or target.lower() != BOT_NAME.lower():
         return
 
-    # Create a BotState per sender and keep it in an array
-    _ = get_bot_state(sender)
+    # Create a BotState per sender and store in bot table
+    bot = get_bot_state(sender)
 
-    # Loop through BotState array and process the PRIVMSG inside that loop
-    for bot in bots:
-        if bot.channel_user != sender:
-            continue
-
-        # Addressed to bot?
-        prefix = BOT_NAME.lower() + ":"
-        stripped = text.strip()
-        addressed = stripped.lower().startswith(prefix)
-        cmd_text = stripped[len(prefix) :].strip() if addressed else ""
-
-        if addressed:
-            cmd_lower = cmd_text.lower()
-            if cmd_lower in (
-                "die",
-                "forget",
-                "who are you?",
-                "who are you",
-                "usage",
-                "users",
-            ):
-                handle_command(bot, sender, cmd_text)
-            else:
-                # Could be a greeting state message addressed to bot
-                handle_greeting_msg(bot, sender, cmd_text)
-        else:
-            # Not directly addressed → check if it's from our greeting partner
-            if bot.channel_user and sender == bot.channel_user:
-                handle_greeting_msg(bot, sender, text)
+    # process the PRIVMSG
+    if message.lower() in COMMANDS:
+        handle_command(bot, sender, message)
+    else:
+        # Could be a greeting state message addressed to bot
+        handle_greeting_msg(bot, sender, message)
 
 
 # ─────────────────────────────────────────────
