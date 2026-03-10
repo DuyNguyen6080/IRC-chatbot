@@ -1,0 +1,54 @@
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net JOIN #map-test
+Guest29 JOINING #map-test
+[SENT] #map-test: Guest29: hi there!
+Setting timer for <__main__.BotState object at 0x10a53e310>
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :hi
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :hello
+[SENT] #map-test: Guest29: Anyone there?
+Setting timer for <__main__.BotState object at 0x10a53e310>
+[SENT] #map-test: Guest29: Whatever.
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PART #map-test
+removing Guest29
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net JOIN #map-test
+Guest29 JOINING #map-test
+[SENT] #map-test: Guest29: hey!
+Setting timer for <__main__.BotState object at 0x109078110>
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: hello
+OUTREACH REPLY (2)  hello
+[SENT] #map-test: Guest29: what's up?
+Setting timer for <__main__.BotState object at 0x109078110>
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: not much
+OUTREACH REPLY (2)  not much
+[SENT] #map-test: Guest29: whatever, fine. Don't answer.
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: how about you?
+GreetState GreetState.DONE canceling time
+[SENT] #map-test: Guest29: OK how can I help you today, I know where things are!
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: who are you?
+[SENT] #map-test: Guest29: My name is map-bot. I was created by Duy Nguyen and Cameron Wolff in CSC482.
+[SENT] #map-test: Guest29: Duy built Part I and Part II, while Cameron polished Parts I and II, and implemented part III.
+[SENT] #map-test: Guest29: I can answer question: ... *dummy need implementation
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: users
+[SENT] #map-test: Guest29: Guest29
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: hello
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: forget
+[SENT] #map-test: Guest29: forgetting everything
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: hello
+[SENT] #map-test: Guest29: hi there!
+Setting timer for <__main__.BotState object at 0x109078110>
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: how is it going?
+OUTREACH REPLY (2)  how is it going?
+[SENT] #map-test: Guest29: Doing well! and you?
+Setting timer for <__main__.BotState object at 0x109078110>
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: good
+GreetState GreetState.DONE canceling time
+[SENT] #map-test: Guest29: OK how can I help you today, I know where things are!
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: how about yourself?
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: where is 35.280395, -120.643622?
+[SENT] #map-test: Guest29: Hmmm, let me think...
+[SENT] #map-test: Guest29: 35.280395, -120.643622 is in: San Luis Obispo, California, United States
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: where is the ISS?
+[SENT] #map-test: Guest29: Hmmm, let me think...
+[INFO] Loading map file, this may take a bit...
+[SENT] #map-test: Guest29: The ISS is above: North Pacific Ocean
+[RAW] :Guest29!~Guest29@99-110-182-33.lightspeed.frokca.sbcglobal.net PRIVMSG #map-test :map-bot: die
+[SENT] #map-test: Guest29: I shall!

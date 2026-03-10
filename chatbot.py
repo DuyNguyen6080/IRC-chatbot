@@ -16,12 +16,12 @@ import sys
 import argparse
 from enum import Enum
 
+import map_tools
+
 # ─────────────────────────────────────────────
 #  Configuration
 # ─────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--owner_name", "-n", type=str)
-parser.add_argument("--course", "-c", type=str)
 parser.add_argument(
     "--server",
     type=str,
@@ -39,6 +39,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--bot_name",
+    "-n",
     type=str,
     default="csc482-bot",
     help="Name of bot on the server. Default is 'csc482-bot'.",
@@ -57,8 +58,6 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-OWNER_NAME = args.owner_name
-COURSE = args.course
 SERVER = args.server
 PORT = args.port
 CHANNEL = args.channel
@@ -149,6 +148,11 @@ COMMANDS = {
     "users",
 }
 
+# Custom reply RE
+BEGIN_RE = r"where is "
+ISS_RE = BEGIN_RE + r"the (iss|international space station)"
+LAT_LON_RE = BEGIN_RE + r"([+-]?[0-9]*[.][0-9]+|[0-9]+),? ([+-]?[0-9]*[.][0-9]+|[0-9]+)"
+
 
 # ─────────────────────────────────────────────
 #  Bot state (reset with "forget")
@@ -177,7 +181,7 @@ def get_bot_state(nick: str) -> BotState:
     b.channel_user = nick
     b.greet_role = "initiator"
     b.greet_state = GreetState.INIT_OUTREACH_SENT
-    bots.append(b)
+    bots[nick] = b
     return b
 
 
@@ -274,7 +278,10 @@ def handle_command(bot: BotState, sender: str, cmd_text: str):
         # who are you? / usage
         case "who are you?" | "who are you" | "usage":
             send_channel(
-                f"{sender}: My name is {BOT_NAME}. I was created by {OWNER_NAME}, {COURSE}."
+                f"{sender}: My name is {BOT_NAME}. I was created by Duy Nguyen and Cameron Wolff in CSC482."
+            )
+            send_channel(
+                f"{sender}: Duy built Part I and Part II, while Cameron polished Parts I and II, and implemented part III."
             )
             send_channel(
                 f"{sender}: I can answer question: ... *dummy need implementation"
@@ -340,33 +347,56 @@ def handle_greeting_msg(bot: BotState, sender: str, text: str):
             print(f"GreetState {s} canceling time")
             cancel_timer_for(bot)
 
-            ask_inq = "OK how can I help you today"
+            ask_inq = "OK how can I help you today, I know where things are!"
             reply(ask_inq)
             bot.greet_role = "responder"
             bot.greet_state = GreetState.AWAITING_INQUIRY
 
         elif USER_GIVEUP.search(text):
             cancel_timer_for(bot)
-            # TODO: change message to align with responder behavior
-            ask_inq = " how can I help you today"
+            ask_inq = "If you'd like to know a location, please ask 'Where is <lat>, <lon>', or 'Where is the ISS'"
             reply(ask_inq)
             bot.greet_role = "responder"
             # After bot has hit done state, it becomes a responder
             bot.greet_state = GreetState.AWAITING_INQUIRY
 
     # ── BOT is RESPONDER ─────────────────────
-    elif bot.greet_role == "responder":
-        # TODO: impl cusstom API call
+    elif bot.greet_role == "responder" and re.search(BEGIN_RE, text):
         cancel_timer_for(bot)
-        # NEED IMPLEMENTING HERE AFTER BOT FINISHED GREETING
-        inquiry = 'This is a dummy response NEED IMPLEMENTATION in handle_greeting_msg -- bot.greet_role = "responser" '
-        reply(inquiry)
-        #
-        #
-        #
-        #
-        #
-        #
+        reply("Hmmm, let me think...")
+        text = text.strip().lower()
+
+        lat, lon, prefix = None, None, None
+        iss = False
+        msg = "Sorry, I only respond to 'where is ...'"
+
+        if re.search(ISS_RE, text):
+            iss = True
+            lat_lon = map_tools.get_iss_lat_lon()
+            if lat_lon is None:
+                msg = "Sorry, I don't know where the ISS is right now"
+            else:
+                lat, lon = lat_lon
+                prefix = "The ISS is above: "
+
+        elif m := re.match(LAT_LON_RE, text):
+            lat, lon = float(m.group(1)), float(m.group(2))
+            prefix = f"{lat}, {lon} is in: "
+
+        if lat and lon and prefix:
+            address = map_tools.get_address(lat, lon)
+            if address is not None:
+                msg = prefix + address
+            else:
+                ocean = map_tools.get_ocean(lat, lon)
+                if ocean:
+                    msg = prefix + ocean
+                elif iss:
+                    msg = prefix + f"{lat}, {lon}"
+                else:
+                    msg = f"Sorry, I don't know where {lat}, {lon} is"
+
+        reply(msg)
 
 
 # ─────────────────────────────────────────────
@@ -424,7 +454,7 @@ def handle_line(line: str) -> None:
     bot = get_bot_state(sender)
 
     # process the PRIVMSG
-    if message.lower() in COMMANDS:
+    if message.lower().strip() in COMMANDS:
         handle_command(bot, sender, message)
     else:
         # Could be a greeting state message addressed to bot

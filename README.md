@@ -15,17 +15,12 @@ A Python IRC chatbot that connects to an IRC channel, holds multi-step greeting 
 
 Open `chatbot1.py` and edit these two lines near the top to match your info:
 
-```python
-OWNER_NAME = "Duy's bot"   # ← change to your real name
-COURSE     = "CSC 482"     # ← change to your section (e.g. CSC 482-01)
-```
-
 ---
 
 ## How to Run
 
 ```bash
-python chatbot1.py <server> <port> <channel> <botname>
+python chatbot1.py --help
 ```
 
 | Argument | Description | Example |
@@ -33,13 +28,7 @@ python chatbot1.py <server> <port> <channel> <botname>
 | `server` | IRC server address | `irc.libera.chat` |
 | `port` | IRC server port | `6667` |
 | `channel` | Channel to join (use quotes) | `"#CSC482"` |
-| `botname` | Your bot's name — **must end with `-bot`** | `duy-bot` |
-
-### Example
-
-```bash
-python chatbot1.py irc.libera.chat 6667 "#CSC482" duy-bot
-```
+| `bot_name` | Your bot's name — **must end with `-bot`** | `duy-bot` |
 
 ### Run with defaults (no arguments)
 
@@ -52,7 +41,6 @@ python chatbot1.py
 # channel: #CSC482
 # botname: cpe482-bot
 ```
-
 
 ## Commands
 
@@ -69,5 +57,9 @@ duy-bot: <command>
 | `who are you?` or `usage` | Bot introduces itself and explains what it can do |
 | `users` | Lists all users the bot has seen in the channel |
 | `hi` or `hello` or `hey` | Starts a greeting conversation with the bot |
+
+## Special usage
+
+You can ask the bot "Where is <latitude>, <longitude>", or "Where is the ISS?", see what happens!
 
 
